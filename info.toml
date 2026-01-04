@@ -1,0 +1,10 @@
+[meta]
+name = "Track Generator Extended"
+author = "EatingMyWings"
+category = "Map Editor"
+version = "1.7.2"
+siteid = 299
+
+[script]
+optional_dependencies = [ "MLHook" ]
+
