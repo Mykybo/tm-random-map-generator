@@ -259,24 +259,24 @@ float FragileWeight = 0.1;
 float ResetWeight = 1.;
 
 [Setting category="Colors" name="Change Color" min=0]
-float ChangeColorWeight = 0.3;
+float ChangeColorWeight = 0.;
 [Setting category="Colors" name="Default" min=0]
-float DefaultColorWeight = 1.;
+float DefaultColorWeight = 0.;
 [Setting category="Colors" name="White" min=0]
-float WhiteColorWeight = 1.;
+float WhiteColorWeight = 0.;
 [Setting category="Colors" name="Green" min=0]
-float GreenColorWeight = 1.;
+float GreenColorWeight = 0.;
 [Setting category="Colors" name="Blue" min=0]
 float BlueColorWeight = 1.;
 [Setting category="Colors" name="Red" min=0]
-float RedColorWeight = 1.;
+float RedColorWeight = 0.;
 [Setting category="Colors" name="Black" min=0]
-float BlackColorWeight = 1.;
+float BlackColorWeight = 0.;
 
 [Setting category="Colors" name="Classic Palette" min=0]
-float ClassicPaletteWeight = 1.;
+float ClassicPaletteWeight = 0.;
 [Setting category="Colors" name="Stunt Palette" min=0]
-float StuntPaletteWeight = 1.;
+float StuntPaletteWeight = 0.;
 [Setting category="Colors" name="Red Palette" min=0]
 float RedPaletteWeight = 0.1;
 [Setting category="Colors" name="Orange Palette" min=0]
