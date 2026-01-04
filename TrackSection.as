@@ -107,10 +107,41 @@ class TrackSection {
         @this.weights = GetWeights(this);
         this.generator.generation_data.ChangeActivity(Activity::Processing);
         this.generator.mapSize = this.generator.map.Map.Size;// max height 39 (38 if tall block such as start)
-        uint x = this.generator.mapSize.x/4;
-        uint y = this.generator.mapSize.y/4;
-        uint z = this.generator.mapSize.z/4;
-        this.nextPosition = int3(Math::Rand(x, this.generator.mapSize.x - x),Math::Rand(y + y/2, this.generator.mapSize.y - y),Math::Rand(z, this.generator.mapSize.z - z));
+
+        // Determine start position based on settings
+        if (StartAtCameraPosition) {
+#if DEPENDENCY_CAMERA
+            auto camera = Camera::GetCurrent();
+            if (camera !is null) {
+                // Use camera position as start location
+                // iso4.tx, .ty, .tz are the translation/position components
+                float camX = camera.Location.tx;
+                float camY = camera.Location.ty;
+                float camZ = camera.Location.tz;
+                // Convert world position to grid coordinates (each block is 32x8x32 units)
+                // Clamp to valid map bounds
+                int x = Math::Clamp(int(camX / 32.0), 1, int(this.generator.mapSize.x) - 1);
+                int y = Math::Clamp(int(camY / 8.0), 1, int(this.generator.mapSize.y) - 1);
+                int z = Math::Clamp(int(camZ / 32.0), 1, int(this.generator.mapSize.z) - 1);
+                this.nextPosition = int3(x, y, z);
+            } else {
+#endif
+                // Camera plugin not available or no camera, use random position
+                uint x = this.generator.mapSize.x/4;
+                uint y = this.generator.mapSize.y/4;
+                uint z = this.generator.mapSize.z/4;
+                this.nextPosition = int3(Math::Rand(x, this.generator.mapSize.x - x),Math::Rand(y + y/2, this.generator.mapSize.y - y),Math::Rand(z, this.generator.mapSize.z - z));
+#if DEPENDENCY_CAMERA
+            }
+#endif
+        } else {
+            // Use random position in the middle of the map
+            uint x = this.generator.mapSize.x/4;
+            uint y = this.generator.mapSize.y/4;
+            uint z = this.generator.mapSize.z/4;
+            this.nextPosition = int3(Math::Rand(x, this.generator.mapSize.x - x),Math::Rand(y + y/2, this.generator.mapSize.y - y),Math::Rand(z, this.generator.mapSize.z - z));
+        }
+
         switch(Math::Rand(0, 4)) {
             case 0:
                 this.nextDirection = CGameEditorPluginMap::ECardinalDirections::North;
@@ -503,8 +534,8 @@ class TrackSection {
     bool _IsStraightBlock() {
         // Block is straight if it doesn't change direction and ends at (0,?,1) relative position
         // Also check it's not tilted or curved
-        return this.thisBlock.Direction == Directions::Forwards && 
-               this.thisBlock.endPosition.x == 0 && 
+        return this.thisBlock.Direction == Directions::Forwards &&
+               this.thisBlock.endPosition.x == 0 &&
                this.thisBlock.endPosition.z == 1;
     }
 

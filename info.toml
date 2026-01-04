@@ -6,5 +6,5 @@ version = "1.7.2"
 siteid = 299
 
 [script]
-optional_dependencies = [ "MLHook" ]
+optional_dependencies = [ "MLHook", "Camera" ]
 

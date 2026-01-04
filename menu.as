@@ -48,6 +48,9 @@ bool WoodOnlyMode = false;
 [Setting category="General" name="Chaotic Wood Connections" description="Allow wood blocks to connect in any orientation (flat to slope, tilt to flat, etc.)"]
 bool WoodChaoticConnections = true;
 
+[Setting category="General" name="Start at Camera Position" description="Use editor camera position as track starting point instead of random location"]
+bool StartAtCameraPosition = false;
+
 [Setting category="General" name="Enable Custom Checkpoint Signs" description="Apply custom image URLs to checkpoints, start, and finish blocks"]
 bool EnableCustomSigns = false;
 
@@ -540,6 +543,9 @@ void RenderInterface() {
             WoodChaoticConnections = UI::Checkbox('##WoodChaoticConnections', WoodChaoticConnections);
             UI::SameLine();
             UI::TextWrapped('Chaotic Wood Connections - allow wood blocks to connect in any orientation (flat to slope, etc.).');
+            StartAtCameraPosition = UI::Checkbox('##StartAtCameraPosition', StartAtCameraPosition);
+            UI::SameLine();
+            UI::TextWrapped('Start at Camera Position - use editor camera position as track starting point instead of random location.');
             EnableCustomSigns = UI::Checkbox('##EnableCustomSigns', EnableCustomSigns);
             UI::SameLine();
             UI::TextWrapped('Enable Custom Checkpoint Signs - apply custom image URLs to checkpoints, start, and finish.');
