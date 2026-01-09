@@ -71,6 +71,18 @@ bool AllowSpecialEffectBlocks = true;
 [Setting category="General" name="Start at Camera Position" description="Use editor camera position as track starting point instead of random location"]
 bool StartAtCameraPosition = false;
 
+[Setting category="General" name="Use Manual Start Position" description="Use manually specified coordinates as track starting point"]
+bool UseManualStartPosition = true;
+
+[Setting category="General" name="Manual Start X" description="X coordinate for manual start position (in block units)"]
+int ManualStartX = 42;
+
+[Setting category="General" name="Manual Start Y" description="Y coordinate for manual start position (in block units)"]
+int ManualStartY = 90;
+
+[Setting category="General" name="Manual Start Z" description="Z coordinate for manual start position (in block units)"]
+int ManualStartZ = 30;
+
 [Setting category="General" name="Enable Custom Checkpoint Signs" description="Apply custom image URLs to checkpoints, start, and finish blocks"]
 bool EnableCustomSigns = false;
 
@@ -605,9 +617,48 @@ void RenderInterface() {
             AllowSpecialEffectBlocks = UI::Checkbox('##AllowSpecialEffectBlocks', AllowSpecialEffectBlocks);
             UI::SameLine();
             UI::TextWrapped('Allow Special Effect Blocks - allow blocks with special effects (boost, turbo, fragile, no-brake, etc.) to be placed during random generation.');
-            StartAtCameraPosition = UI::Checkbox('##StartAtCameraPosition', StartAtCameraPosition);
+            bool newStartAtCameraPosition = UI::Checkbox('##StartAtCameraPosition', StartAtCameraPosition);
+            if (newStartAtCameraPosition && !StartAtCameraPosition) {
+                StartAtCameraPosition = true;
+                UseManualStartPosition = false;
+            } else {
+                StartAtCameraPosition = newStartAtCameraPosition;
+            }
             UI::SameLine();
             UI::TextWrapped('Start at Camera Position - use editor camera position as track starting point instead of random location.');
+            if (StartAtCameraPosition) {
+#if DEPENDENCY_CAMERA
+                auto camera = Camera::GetCurrent();
+                if (camera !is null) {
+                    UI::Text("  Camera Position: X=" + int(camera.Location.tx / 32) + ", Y=" + int(camera.Location.ty / 8) + ", Z=" + int(camera.Location.tz / 32));
+                } else {
+                    UI::TextDisabled("  Camera position unavailable");
+                }
+#else
+                UI::TextDisabled("  Camera plugin not available");
+#endif
+            }
+            bool newUseManualStartPosition = UI::Checkbox('##UseManualStartPosition', UseManualStartPosition);
+            if (newUseManualStartPosition && !UseManualStartPosition) {
+                UseManualStartPosition = true;
+                StartAtCameraPosition = false;
+            } else {
+                UseManualStartPosition = newUseManualStartPosition;
+            }
+            UI::SameLine();
+            UI::TextWrapped('Use Manual Start Position - use manually specified coordinates as track starting point.');
+            if (UseManualStartPosition) {
+                UI::Text("  Manual Start Position:");
+                UI::SameLine();
+                UI::SetNextItemWidth(80);
+                ManualStartX = UI::InputInt('X##ManualStartX', ManualStartX, 1);
+                UI::SameLine();
+                UI::SetNextItemWidth(80);
+                ManualStartY = UI::InputInt('Y##ManualStartY', ManualStartY, 1);
+                UI::SameLine();
+                UI::SetNextItemWidth(80);
+                ManualStartZ = UI::InputInt('Z##ManualStartZ', ManualStartZ, 1);
+            }
             EnableCustomSigns = UI::Checkbox('##EnableCustomSigns', EnableCustomSigns);
             UI::SameLine();
             UI::TextWrapped('Enable Custom Checkpoint Signs - apply custom image URLs to checkpoints, start, and finish.');

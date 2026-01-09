@@ -109,7 +109,13 @@ class TrackSection {
         this.generator.mapSize = this.generator.map.Map.Size;// max height 39 (38 if tall block such as start)
 
         // Determine start position based on settings
-        if (StartAtCameraPosition) {
+        if (UseManualStartPosition) {
+            // Use manually specified coordinates
+            int x = Math::Clamp(ManualStartX, 1, int(this.generator.mapSize.x) - 1);
+            int y = Math::Clamp(ManualStartY, 1, int(this.generator.mapSize.y) - 1);
+            int z = Math::Clamp(ManualStartZ, 1, int(this.generator.mapSize.z) - 1);
+            this.nextPosition = int3(x, y, z);
+        } else if (StartAtCameraPosition) {
 #if DEPENDENCY_CAMERA
             auto camera = Camera::GetCurrent();
             if (camera !is null) {
