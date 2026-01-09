@@ -37,16 +37,36 @@ uint FinishDistance = 70;
 // uint FinishDistancePower = 7;
 [Setting category="General" name="Increase vertical separation"]
 bool verticalSeparation = true;
+// Effect type to place with checkpoints in One Type Only Mode
+enum CheckpointEffectType {
+    ReactorDown,
+    ReactorUp,
+    NoEngine,
+    NoBrake,
+    Cruise,
+    Fragile,
+    None
+}
+
 [Setting category="General" name="Placing attempts before undo" min=1]
 uint errorTries = 200;
 [Setting category="General" name="Weight remaining before undoing" min=0 max=1 description="When a block placement fails, its weight is removed from the possible next blocks for the previous block"]
 float weightLoss = 0.001;
 
-[Setting category="General" name="Wood Only Mode" description="Only place wood (snow road) blocks"]
-bool WoodOnlyMode = false;
+[Setting category="General" name="One Type Only Mode" description="Only place blocks of selected surface type"]
+bool OneTypeOnlyMode = false;
 
-[Setting category="General" name="Chaotic Wood Connections" description="Allow wood blocks to connect in any orientation (flat to slope, tilt to flat, etc.)"]
-bool WoodChaoticConnections = true;
+[Setting category="General" name="Selected Block Type" description="Surface type to use when One Type Only Mode is enabled"]
+Tags SelectedBlockType = Tags::SnowRoad;
+
+[Setting category="General" name="Chaotic Connections" description="Allow blocks of selected type to connect in any orientation (flat to slope, tilt to flat, etc.)"]
+bool ChaoticConnections = true;
+
+[Setting category="General" name="Checkpoint Effect" description="Effect to place with checkpoints in One Type Only Mode"]
+CheckpointEffectType CheckpointEffect = CheckpointEffectType::ReactorDown;
+
+[Setting category="General" name="Allow Special Effect Blocks" description="Allow blocks with special effects (boost, turbo, fragile, no-brake, etc.) to be placed during random generation"]
+bool AllowSpecialEffectBlocks = true;
 
 [Setting category="General" name="Start at Camera Position" description="Use editor camera position as track starting point instead of random location"]
 bool StartAtCameraPosition = false;
@@ -537,12 +557,54 @@ void RenderInterface() {
             verticalSeparation = UI::Checkbox('##verticalSeparation', verticalSeparation);
             UI::SameLine();
             UI::TextWrapped('Increase vertical separation below placed blocks. This should ensure black platform is never blocked off.');
-            WoodOnlyMode = UI::Checkbox('##WoodOnlyMode', WoodOnlyMode);
+            OneTypeOnlyMode = UI::Checkbox('##OneTypeOnlyMode', OneTypeOnlyMode);
             UI::SameLine();
-            UI::TextWrapped('Wood Only Mode - only use wood (snow road) blocks, no car gates.');
-            WoodChaoticConnections = UI::Checkbox('##WoodChaoticConnections', WoodChaoticConnections);
+            UI::TextWrapped('One Type Only Mode - only use blocks of selected surface type, no car gates or boosters.');
+            if (OneTypeOnlyMode) {
+                UI::Indent();
+                if (UI::BeginCombo('##SelectedBlockType', tostring(SelectedBlockType))) {
+                    if (UI::Selectable('RoadTech', SelectedBlockType == Tags::RoadTech)) SelectedBlockType = Tags::RoadTech;
+                    if (UI::Selectable('RoadDirt', SelectedBlockType == Tags::RoadDirt)) SelectedBlockType = Tags::RoadDirt;
+                    if (UI::Selectable('RoadBump', SelectedBlockType == Tags::RoadBump)) SelectedBlockType = Tags::RoadBump;
+                    if (UI::Selectable('RoadIce', SelectedBlockType == Tags::RoadIce)) SelectedBlockType = Tags::RoadIce;
+                    if (UI::Selectable('SnowRoad', SelectedBlockType == Tags::SnowRoad)) SelectedBlockType = Tags::SnowRoad;
+                    if (UI::Selectable('RallyCastleRoad', SelectedBlockType == Tags::RallyCastleRoad)) SelectedBlockType = Tags::RallyCastleRoad;
+                    if (UI::Selectable('RallyRoadDirtHigh', SelectedBlockType == Tags::RallyRoadDirtHigh)) SelectedBlockType = Tags::RallyRoadDirtHigh;
+                    if (UI::Selectable('RallyRoadDirtLow', SelectedBlockType == Tags::RallyRoadDirtLow)) SelectedBlockType = Tags::RallyRoadDirtLow;
+                    if (UI::Selectable('TrackWall', SelectedBlockType == Tags::TrackWall)) SelectedBlockType = Tags::TrackWall;
+                    if (UI::Selectable('PlatformTech', SelectedBlockType == Tags::PlatformTech)) SelectedBlockType = Tags::PlatformTech;
+                    if (UI::Selectable('PlatformDirt', SelectedBlockType == Tags::PlatformDirt)) SelectedBlockType = Tags::PlatformDirt;
+                    if (UI::Selectable('PlatformIce', SelectedBlockType == Tags::PlatformIce)) SelectedBlockType = Tags::PlatformIce;
+                    if (UI::Selectable('PlatformGrass', SelectedBlockType == Tags::PlatformGrass)) SelectedBlockType = Tags::PlatformGrass;
+                    if (UI::Selectable('PlatformPlastic', SelectedBlockType == Tags::PlatformPlastic)) SelectedBlockType = Tags::PlatformPlastic;
+                    UI::EndCombo();
+                }
+                UI::SameLine();
+                UI::Text('Selected Surface Type');
+                UI::Unindent();
+            }
+            ChaoticConnections = UI::Checkbox('##ChaoticConnections', ChaoticConnections);
             UI::SameLine();
-            UI::TextWrapped('Chaotic Wood Connections - allow wood blocks to connect in any orientation (flat to slope, etc.).');
+            UI::TextWrapped('Chaotic Connections - allow blocks of selected type to connect in any orientation (flat to slope, etc.).');
+            if (OneTypeOnlyMode) {
+                UI::Indent();
+                if (UI::BeginCombo('##CheckpointEffect', tostring(CheckpointEffect))) {
+                    if (UI::Selectable('ReactorDown', CheckpointEffect == CheckpointEffectType::ReactorDown)) CheckpointEffect = CheckpointEffectType::ReactorDown;
+                    if (UI::Selectable('ReactorUp', CheckpointEffect == CheckpointEffectType::ReactorUp)) CheckpointEffect = CheckpointEffectType::ReactorUp;
+                    if (UI::Selectable('NoEngine', CheckpointEffect == CheckpointEffectType::NoEngine)) CheckpointEffect = CheckpointEffectType::NoEngine;
+                    if (UI::Selectable('NoBrake', CheckpointEffect == CheckpointEffectType::NoBrake)) CheckpointEffect = CheckpointEffectType::NoBrake;
+                    if (UI::Selectable('Cruise', CheckpointEffect == CheckpointEffectType::Cruise)) CheckpointEffect = CheckpointEffectType::Cruise;
+                    if (UI::Selectable('Fragile', CheckpointEffect == CheckpointEffectType::Fragile)) CheckpointEffect = CheckpointEffectType::Fragile;
+                    if (UI::Selectable('None', CheckpointEffect == CheckpointEffectType::None)) CheckpointEffect = CheckpointEffectType::None;
+                    UI::EndCombo();
+                }
+                UI::SameLine();
+                UI::Text('Checkpoint Effect');
+                UI::Unindent();
+            }
+            AllowSpecialEffectBlocks = UI::Checkbox('##AllowSpecialEffectBlocks', AllowSpecialEffectBlocks);
+            UI::SameLine();
+            UI::TextWrapped('Allow Special Effect Blocks - allow blocks with special effects (boost, turbo, fragile, no-brake, etc.) to be placed during random generation.');
             StartAtCameraPosition = UI::Checkbox('##StartAtCameraPosition', StartAtCameraPosition);
             UI::SameLine();
             UI::TextWrapped('Start at Camera Position - use editor camera position as track starting point instead of random location.');

@@ -80,10 +80,33 @@ Settings are defined in `menu.as` with `[Setting]` attributes:
 uint FinishDistance = 70;
 ```
 
+**IMPORTANT:** When adding a new setting, you MUST do TWO things:
+1. **Declare the setting** with `[Setting]` attribute (as shown above)
+2. **Render it in the UI** by adding corresponding UI code in the `RenderInterface()` function in `menu.as`
+
+Example for a checkbox setting:
+```angelscript
+// 1. Declare the setting (at top of file)
+[Setting category="General" name="My Feature" description="Enable my feature"]
+bool MyFeatureSetting = false;
+
+// 2. Render in UI (in RenderInterface function)
+MyFeatureSetting = UI::Checkbox('##MyFeatureSetting', MyFeatureSetting);
+UI::SameLine();
+UI::TextWrapped('My Feature - description of what it does.');
+```
+
+For other input types, look at existing examples in `menu.as`:
+- `UI::Checkbox()` for bool
+- `UI::InputInt()` for int/uint
+- `UI::InputFloat()` for float
+- `UI::BeginCombo()` / `UI::Selectable()` for enums
+
 Key setting categories:
 - **General:** Track length, checkpoint distance, error handling, special modes
-  - **Wood Only Mode:** When enabled, generates tracks using only wood (snow road) blocks with snow road start blocks, excludes car gates and random boosters, and places a reactor down effect after the start and each checkpoint.
-  - **Chaotic Wood Connections:** When enabled, allows wood blocks to connect in any orientation (flat to slope, tilt to flat, etc.) for wild track layouts.
+  - **One Type Only Mode:** When enabled, generates tracks using only blocks of the selected surface type
+  - **Chaotic Connections:** When enabled, allows blocks to connect in any orientation (flat to slope, tilt to flat, etc.) for wild track layouts
+  - **Allow Special Effect Blocks:** When enabled, allows blocks with special effects (boost, turbo, fragile, etc.) to be placed during random generation
 - **Surface:** Weights for each road/platform surface type
 - **Features:** Weights for turns, slopes, loops, etc.
 - **Color:** Block color weights

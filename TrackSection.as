@@ -294,9 +294,9 @@ class TrackSection {
                         this.generator.map.SetMacroblockSkin(placedMacroblock, CustomStartFinishSignURL);
                         this.generator.map.AutoSave();
                     }
-                    // In Wood Only Mode, place a reactor down after start
-                    if (WoodOnlyMode) {
-                        _PlaceReactorDownAfterCheckpoint();
+                    // In One Type Only Mode, place selected effect after start
+                    if (OneTypeOnlyMode) {
+                        _PlaceCheckpointEffect();
                     }
                 } else if ((this.thisBlock.tags.Find(Tags::Checkpoint) >= 0)) {
                     if (EnableCustomSigns && CustomCheckpointSignURL != "") {
@@ -306,9 +306,9 @@ class TrackSection {
                         // Clear any existing skin when custom signs are disabled
                         this.generator.map.SetMacroblockSkin(placedMacroblock, "");
                     }
-                    // In Wood Only Mode, place a reactor down after checkpoints
-                    if (WoodOnlyMode) {
-                        _PlaceReactorDownAfterCheckpoint();
+                    // In One Type Only Mode, place selected effect after checkpoints
+                    if (OneTypeOnlyMode) {
+                        _PlaceCheckpointEffect();
                     }
                 } else if ((this.thisBlock.tags.Find(Tags::Multilap) >= 0)) {
                     if (EnableCustomSigns && CustomCheckpointSignURL != "") {
@@ -450,9 +450,9 @@ class TrackSection {
                 this.generator.map.SetBlockSkin(placedBlock, CustomStartFinishSignURL);
                 this.generator.map.AutoSave();
             }
-            // In Wood Only Mode, place a reactor down after start
-            if (WoodOnlyMode) {
-                _PlaceReactorDownAfterCheckpoint();
+            // In One Type Only Mode, place selected effect after start
+            if (OneTypeOnlyMode) {
+                _PlaceCheckpointEffect();
             }
         } else if ((this.thisBlock.tags.Find(Tags::Checkpoint) >= 0 || this.thisBlock.tags.Find(Tags::Multilap) >= 0)) {
             if (EnableCustomSigns && CustomCheckpointSignURL != "") {
@@ -462,12 +462,12 @@ class TrackSection {
                 // Clear any existing skin when custom signs are disabled
                 this.generator.map.SetBlockSkin(placedBlock, "");
             }
-            // In Wood Only Mode, place a reactor down after checkpoints
-            if (WoodOnlyMode) {
-                _PlaceReactorDownAfterCheckpoint();
+            // In One Type Only Mode, place selected effect after checkpoints
+            if (OneTypeOnlyMode) {
+                _PlaceCheckpointEffect();
             }
-        } else if (WoodOnlyMode) {
-            // In Wood Only Mode, check if we should place a checkpoint item on this regular block
+        } else if (OneTypeOnlyMode) {
+            // In One Type Only Mode, check if we should place a checkpoint item on this regular block
             // Only place checkpoints on straight blocks to ensure proper alignment
             if (_IsStraightBlock() && _ShouldPlaceCheckpoint()) {
                 _PlaceCheckpointItem();
@@ -475,24 +475,71 @@ class TrackSection {
         }
     }
 
-    // Places a reactor down ghost block at the next position after current block (used for Wood Only Mode checkpoints)
-    void _PlaceReactorDownAfterCheckpoint() {
-        _PlaceReactorDownAfterCheckpoint(this.nextPosition, this.nextDirection);
+    // Places the selected checkpoint effect ghost block at the next position after current block
+    void _PlaceCheckpointEffect() {
+        // Adjust height for non-SnowRoad surfaces before calling the overload
+        int3 effectPos = this.nextPosition;
+        if (!_IsSnowRoad()) {
+            effectPos = effectPos + int3(0, -1, 0);
+        }
+        _PlaceCheckpointEffect(effectPos, this.nextDirection);
     }
 
-    // Overload: Place reactor down at a specific position/direction (for checkpoint items)
-    void _PlaceReactorDownAfterCheckpoint(int3 pos, CGameEditorPluginMap::ECardinalDirections dir) {
-        CGameCtnBlockInfo@ reactorBlock = this.generator.map.GetBlockModelFromName("GateSpecialBoost");
-        if (reactorBlock is null) {
-            if (debugPrint) {print('Could not find GateSpecialBoost block');}
+    // Overload: Place checkpoint effect at a specific position/direction
+    void _PlaceCheckpointEffect(int3 pos, CGameEditorPluginMap::ECardinalDirections dir) {
+        // Don't place anything if effect is None
+        if (CheckpointEffect == CheckpointEffectType::None) {
             return;
         }
-        // Use Reverse direction (RotationOffset 2) to get the "down" variant of the reactor boost
-        CGameEditorPluginMap::ECardinalDirections reactorDirection = AddDirections(dir, Directions::Reverse);
-        if (this.generator.map.PlaceGhostBlock(reactorBlock, pos, reactorDirection)) {
-            if (debugPrint) {print('Placed reactor down after checkpoint');}
+
+        // Map effect type to block name and rotation
+        string blockName = "";
+        bool useReverseDirection = false;
+
+        switch (CheckpointEffect) {
+            case CheckpointEffectType::ReactorDown:
+                blockName = "GateSpecialBoost";
+                useReverseDirection = true; // Down variant
+                break;
+            case CheckpointEffectType::ReactorUp:
+                blockName = "GateSpecialBoost";
+                useReverseDirection = false; // Up variant
+                break;
+            case CheckpointEffectType::NoEngine:
+                blockName = "GateSpecialNoEngine";
+                useReverseDirection = false;
+                break;
+            case CheckpointEffectType::NoBrake:
+                blockName = "GateSpecialNoBrake";
+                useReverseDirection = false;
+                break;
+            case CheckpointEffectType::Cruise:
+                blockName = "GateSpecialCruise";
+                useReverseDirection = false;
+                break;
+            case CheckpointEffectType::Fragile:
+                blockName = "GateSpecialFragile";
+                useReverseDirection = false;
+                break;
+        }
+
+        if (blockName == "") {
+            return;
+        }
+
+        CGameCtnBlockInfo@ effectBlock = this.generator.map.GetBlockModelFromName(blockName);
+        if (effectBlock is null) {
+            if (debugPrint) {print('Could not find ' + blockName + ' block');}
+            return;
+        }
+
+        // Apply reverse direction if needed (for down variant)
+        CGameEditorPluginMap::ECardinalDirections effectDirection = useReverseDirection ? AddDirections(dir, Directions::Reverse) : dir;
+
+        if (this.generator.map.PlaceGhostBlock(effectBlock, pos, effectDirection)) {
+            if (debugPrint) {print('Placed checkpoint effect: ' + blockName);}
         } else {
-            if (debugPrint) {print('Failed to place reactor down after checkpoint');}
+            if (debugPrint) {print('Failed to place checkpoint effect: ' + blockName);}
         }
     }
 
@@ -503,8 +550,13 @@ class TrackSection {
             if (debugPrint) {print('Could not find GateCheckpoint block');}
             return;
         }
+        // Adjust height for non-SnowRoad surfaces (place lower)
+        int3 itemPos = this.placedAt;
+        if (!_IsSnowRoad()) {
+            itemPos = itemPos + int3(0, -1, 0);
+        }
         // Place at the current block position with the driving direction (nextDirection)
-        if (this.generator.map.PlaceGhostBlock(checkpointBlock, this.placedAt, this.nextDirection)) {
+        if (this.generator.map.PlaceGhostBlock(checkpointBlock, itemPos, this.nextDirection)) {
             // Clear or set the skin based on EnableCustomSigns
             uint itemCount = this.generator.map.Items.Length;
             if (itemCount > 0) {
@@ -523,8 +575,8 @@ class TrackSection {
             // Reset sinceLastCheckpoint and increment numCheckpoints
             this.sinceLastCheckpoint = this.thisBlock.lengthAccurate - 1;
             this.numCheckpoints++;
-            // Also place reactor down after the checkpoint, at the same position/height
-            _PlaceReactorDownAfterCheckpoint(this.placedAt, this.nextDirection);
+            // Also place selected effect after the checkpoint, at the same position/height as the item
+            _PlaceCheckpointEffect(itemPos, this.nextDirection);
         } else {
             if (debugPrint) {print('Failed to place checkpoint item');}
         }
@@ -539,9 +591,30 @@ class TrackSection {
                this.thisBlock.endPosition.z == 1;
     }
 
+    // Checks if the current block uses SnowRoad connections
+    bool _IsSnowRoad() {
+        Connections conn = this.thisBlock.endConnector;
+        return conn == Connections::SnowRoadFlat ||
+               conn == Connections::SnowRoadSlopeUp ||
+               conn == Connections::SnowRoadSlopeDown ||
+               conn == Connections::SnowRoadTiltLeft ||
+               conn == Connections::SnowRoadTiltRight;
+    }
+
     // Checks if it's time to place a checkpoint based on distance, using probability
     bool _ShouldPlaceCheckpoint() {
-        // Use similar weight formula as the normal checkpoint system
+        // Don't place checkpoints too close together - enforce minimum distance of 60% of target
+        float minDistance = CheckpointDistance * 0.6;
+        if (this.sinceLastCheckpoint < minDistance) {
+            return false;
+        }
+
+        // Always place if we're way over the target distance (150% of target)
+        if (this.sinceLastCheckpoint >= CheckpointDistance * 1.5) {
+            return true;
+        }
+
+        // Use probability-based placement between min and max distance
         // Weight = 2 * CheckpointDistance * Math::Pow(2., sinceLastCheckpoint - CheckpointDistance)
         float cpWeight = 2.0 * CheckpointDistance * Math::Pow(2., this.sinceLastCheckpoint - CheckpointDistance);
         // Normalize to a probability (cap at 1.0)

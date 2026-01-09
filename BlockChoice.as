@@ -1,20 +1,54 @@
 
-// Checks if a connector is a SnowRoad type connector
-bool IsSnowRoadConnector(Connections conn) {
-    return conn == Connections::SnowRoadFlat ||
-           conn == Connections::SnowRoadSlopeDown ||
-           conn == Connections::SnowRoadSlopeUp ||
-           conn == Connections::SnowRoadTiltLeft ||
-           conn == Connections::SnowRoadTiltRight;
+// Checks if a connector matches the selected type based on prefix
+bool IsSelectedTypeConnector(Connections conn, Tags selectedType) {
+    string connStr = tostring(conn);
+    string typeStr = tostring(selectedType);
+
+    // Map tag names to connector prefixes
+    if (typeStr == "SnowRoad") {
+        return conn == Connections::SnowRoadFlat ||
+               conn == Connections::SnowRoadSlopeDown ||
+               conn == Connections::SnowRoadSlopeUp ||
+               conn == Connections::SnowRoadTiltLeft ||
+               conn == Connections::SnowRoadTiltRight;
+    } else if (typeStr == "RoadTech") {
+        return connStr.StartsWith("RoadTech");
+    } else if (typeStr == "RoadDirt") {
+        return connStr.StartsWith("RoadDirt");
+    } else if (typeStr == "RoadBump") {
+        return connStr.StartsWith("RoadBump");
+    } else if (typeStr == "RoadIce") {
+        // Exclude UnderwaterBobsled connectors which also start with connector names containing "Ice"
+        return (connStr.StartsWith("RoadIce")) && !connStr.StartsWith("UnderwaterBobsled");
+    } else if (typeStr == "TrackWall") {
+        return connStr.StartsWith("TrackWall") && !connStr.StartsWith("TrackWallWater");
+    } else if (typeStr == "PlatformTech") {
+        return connStr.StartsWith("PlatformTech");
+    } else if (typeStr == "PlatformDirt") {
+        return connStr.StartsWith("PlatformDirt");
+    } else if (typeStr == "PlatformIce") {
+        return connStr.StartsWith("PlatformIce");
+    } else if (typeStr == "PlatformGrass") {
+        return connStr.StartsWith("PlatformGrass");
+    } else if (typeStr == "PlatformPlastic") {
+        return connStr.StartsWith("PlatformPlastic");
+    } else if (typeStr == "RallyCastleRoad") {
+        return connStr.StartsWith("RallyCastleRoad");
+    } else if (typeStr == "RallyRoadDirtHigh") {
+        return connStr.StartsWith("RallyRoadDirtHigh");
+    } else if (typeStr == "RallyRoadDirtLow") {
+        return connStr.StartsWith("RallyRoadDirtLow");
+    }
+    return false;
 }
 
-// Checks if two connectors are compatible (normally must match exactly, but with Chaotic Wood Connections any SnowRoad connectors match)
+// Checks if two connectors are compatible (normally must match exactly, but with Chaotic Connections connectors of selected type can match)
 bool ConnectorsCompatible(Connections endConn, Connections startConn) {
     if (endConn == startConn) {
         return true;
     }
-    // With Chaotic Wood Connections, any SnowRoad connector can connect to any other SnowRoad connector
-    if (WoodChaoticConnections && IsSnowRoadConnector(endConn) && IsSnowRoadConnector(startConn)) {
+    // With Chaotic Connections and One Type Only Mode enabled, any connectors of the selected type can connect
+    if (ChaoticConnections && OneTypeOnlyMode && IsSelectedTypeConnector(endConn, SelectedBlockType) && IsSelectedTypeConnector(startConn, SelectedBlockType)) {
         return true;
     }
     return false;
@@ -30,9 +64,9 @@ array<float> GetWeights(TrackSection@ currentSection) {
 
     for (uint i = 0; i < Blocks.Length; i++) {
         if (Blocks[i] is null) {print('Maybe trailing comma in blocks list?');}
-        // Wood Only Mode: only allow SnowRoad blocks, finish, start - no car gates, boosters, or checkpoints (we place CP items instead)
-        if (WoodOnlyMode) {
-            bool isSnowRoad = Blocks[i].tags.Find(Tags::SnowRoad) != -1;
+        // One Type Only Mode: only allow blocks of selected type, finish, start - no car gates, boosters, or checkpoints (we place CP items instead)
+        if (OneTypeOnlyMode) {
+            bool isSelectedType = Blocks[i].tags.Find(SelectedBlockType) != -1;
             bool isCheckpoint = Blocks[i].tags.Find(Tags::Checkpoint) != -1;
             bool isFinish = Blocks[i].tags.Find(Tags::Finish) != -1;
             bool isStart = Blocks[i].tags.Find(Tags::Start) != -1;
@@ -46,23 +80,47 @@ array<float> GetWeights(TrackSection@ currentSection) {
             if (isCheckpoint) {
                 continue;
             }
-            // Allow car gates only on start blocks (SnowRoad start includes CarSnow)
+            // Allow car gates only on start blocks (selected type start may include car gate)
             if (isCarGate && !isStart) {
                 continue;
             }
-            // For start blocks, require SnowRoad tag to ensure we get a wood start
-            if (isStart && !isSnowRoad) {
+            // For start blocks, require selected type tag to ensure we get the right start
+            if (isStart && !isSelectedType) {
                 continue;
             }
-            if (!isSnowRoad && !isFinish && !isStart) {
+            if (!isSelectedType && !isFinish && !isStart) {
                 continue;
             }
         }
-        if (ConnectorsCompatible(currentSection.thisBlock.endConnector, Blocks[i].startConnector)) {
-            // if ((currentSection.thisBlock.lengthAccurate == 0) && Blocks[i].lengthAccurate == 0) {
-            //     weights[i] = 0;
-            // } else
-            if (currentSection.thisBlock.tags.Find(Tags::NoDuplicate) != -1 && Blocks[i].tags.Find(Tags::NoDuplicate) != -1) {
+
+        // Filter out special effect blocks if AllowSpecialEffectBlocks is disabled
+        if (!AllowSpecialEffectBlocks) {
+            bool isSpecialEffect = Blocks[i].tags.Find(Tags::Turbo) != -1 ||
+                                    Blocks[i].tags.Find(Tags::AntiTurbo) != -1 ||
+                                    Blocks[i].tags.Find(Tags::SuperTurbo) != -1 ||
+                                    Blocks[i].tags.Find(Tags::AntiSuperTurbo) != -1 ||
+                                    Blocks[i].tags.Find(Tags::RandomTurbo) != -1 ||
+                                    Blocks[i].tags.Find(Tags::AntiRandomTurbo) != -1 ||
+                                    Blocks[i].tags.Find(Tags::BoostUp) != -1 ||
+                                    Blocks[i].tags.Find(Tags::BoostDown) != -1 ||
+                                    Blocks[i].tags.Find(Tags::Boost2Up) != -1 ||
+                                    Blocks[i].tags.Find(Tags::Boost2Down) != -1 ||
+                                    Blocks[i].tags.Find(Tags::Cruise) != -1 ||
+                                    Blocks[i].tags.Find(Tags::NoBrake) != -1 ||
+                                    Blocks[i].tags.Find(Tags::NoEngine) != -1 ||
+                                    Blocks[i].tags.Find(Tags::NoSteering) != -1 ||
+                                    Blocks[i].tags.Find(Tags::SlowMotion) != -1 ||
+                                    Blocks[i].tags.Find(Tags::Fragile) != -1 ||
+                                    Blocks[i].tags.Find(Tags::Reset) != -1;
+                        if (isSpecialEffect) {
+                                continue;
+                        }
+                    }
+                    if (ConnectorsCompatible(currentSection.thisBlock.endConnector, Blocks[i].startConnector)) {
+                            // if ((currentSection.thisBlock.lengthAccurate == 0) && Blocks[i].lengthAccurate == 0) {
+                        //     weights[i] = 0;
+                        // } else
+                        if (currentSection.thisBlock.tags.Find(Tags::NoDuplicate) != -1 && Blocks[i].tags.Find(Tags::NoDuplicate) != -1) {
                 weights[i] = 0;
             } else if (previousEmpty && Blocks[i].tags.Find(Tags::PreviousNotEmpty) != -1) {
                 weights[i] = 0;
